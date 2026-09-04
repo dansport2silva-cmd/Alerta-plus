@@ -1,0 +1,29 @@
+
+  "project_info": {
+    "project_number": "273630997053",
+    "project_id": "alerta-plus-50bc1",
+    "storage_bucket": "alerta-plus-50bc1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:273630997053:android:d640d6820012cde96e1854",
+        "android_client_info": {
+          "package_name": "com.example.alerta_plus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAb9ckyrMGrsTaMFtSQNxP5FsfjOO3IV3g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
