@@ -1,132 +1,109 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
-enum ReminderCategory { estudos, tarefas, compromissos }
+enum ReminderCategory {
+  work('Trabalho', Icons.work, Color(0xFF6C63FF)),
+  personal('Pessoal', Icons.person, Color(0xFF00BFA6)),
+  health('Saúde', Icons.favorite, Color(0xFFFF6584)),
+  study('Estudos', Icons.school, Color(0xFFFFB800)),
+  finance('Financeiro', Icons.attach_money, Color(0xFF4CAF50)),
+  other('Outros', Icons.more_horiz, Color(0xFF78909C));
 
-enum ReminderStatus { pendente, concluido, cancelado }
+  final String label;
+  final IconData icon;
+  final Color color;
 
-enum RecurrenceType { nenhuma, diario, semanal, mensal }
+  const ReminderCategory(this.label, this.icon, this.color);
+}
+
+enum ReminderStatus { pending, completed, cancelled }
+
+enum RecurrenceType { none, daily, weekly, monthly }
 
 class ReminderModel {
   final String id;
   final String title;
+  final String? description;
   final ReminderCategory category;
   final DateTime dateTime;
   final ReminderStatus status;
   final RecurrenceType recurrence;
   final DateTime createdAt;
-  final int? notificationId;
+  final bool notificationEnabled;
 
   ReminderModel({
     required this.id,
     required this.title,
+    this.description,
     required this.category,
     required this.dateTime,
-    this.status = ReminderStatus.pendente,
-    this.recurrence = RecurrenceType.nenhuma,
+    this.status = ReminderStatus.pending,
+    this.recurrence = RecurrenceType.none,
     required this.createdAt,
-    this.notificationId,
+    this.notificationEnabled = true,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'category': category.name,
-      'dateTime': Timestamp.fromDate(dateTime),
-      'status': status.name,
-      'recurrence': recurrence.name,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'notificationId': notificationId,
-    };
+  bool get isOverdue => dateTime.isBefore(DateTime.now()) && status == ReminderStatus.pending;
+
+  bool get isToday {
+    final now = DateTime.now();
+    return dateTime.year == now.year && dateTime.month == now.month && dateTime.day == now.day;
   }
 
-  factory ReminderModel.fromMap(Map<String, dynamic> map) {
-    return ReminderModel(
-      id: map['id'] ?? '',
-      title: map['title'] ?? '',
-      category: ReminderCategory.values.firstWhere(
-        (e) => e.name == map['category'],
-        orElse: () => ReminderCategory.tarefas,
-      ),
-      dateTime: (map['dateTime'] as Timestamp).toDate(),
-      status: ReminderStatus.values.firstWhere(
-        (e) => e.name == map['status'],
-        orElse: () => ReminderStatus.pendente,
-      ),
-      recurrence: RecurrenceType.values.firstWhere(
-        (e) => e.name == map['recurrence'],
-        orElse: () => RecurrenceType.nenhuma,
-      ),
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      notificationId: map['notificationId'],
-    );
+  bool get isThisWeek {
+    final now = DateTime.now();
+    final diff = dateTime.difference(now).inDays;
+    return diff >= 0 && diff <= 7;
   }
 
   ReminderModel copyWith({
     String? id,
     String? title,
+    String? description,
     ReminderCategory? category,
     DateTime? dateTime,
     ReminderStatus? status,
     RecurrenceType? recurrence,
     DateTime? createdAt,
-    int? notificationId,
+    bool? notificationEnabled,
   }) {
     return ReminderModel(
       id: id ?? this.id,
       title: title ?? this.title,
+      description: description ?? this.description,
       category: category ?? this.category,
       dateTime: dateTime ?? this.dateTime,
       status: status ?? this.status,
       recurrence: recurrence ?? this.recurrence,
       createdAt: createdAt ?? this.createdAt,
-      notificationId: notificationId ?? this.notificationId,
+      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
     );
   }
 
-  String get categoryLabel {
-    switch (category) {
-      case ReminderCategory.estudos:
-        return '📚 Estudos';
-      case ReminderCategory.tarefas:
-        return '📝 Tarefas';
-      case ReminderCategory.compromissos:
-        return '📅 Compromissos';
-    }
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'category': category.name,
+      'dateTime': dateTime.toIso8601String(),
+      'status': status.name,
+      'recurrence': recurrence.name,
+      'createdAt': createdAt.toIso8601String(),
+      'notificationEnabled': notificationEnabled,
+    };
   }
 
-  String get recurrenceLabel {
-    switch (recurrence) {
-      case RecurrenceType.nenhuma:
-        return 'Único';
-      case RecurrenceType.diario:
-        return '🔄 Diário';
-      case RecurrenceType.semanal:
-        return '🔄 Semanal';
-      case RecurrenceType.mensal:
-        return '🔄 Mensal';
-    }
-  }
-
-  Color get categoryColor {
-    switch (category) {
-      case ReminderCategory.estudos:
-        return const Color(0xFF4F46E5);
-      case ReminderCategory.tarefas:
-        return const Color(0xFFEA580C);
-      case ReminderCategory.compromissos:
-        return const Color(0xFF059669);
-    }
-  }
-
-  Color get categoryBgColor {
-    switch (category) {
-      case ReminderCategory.estudos:
-        return const Color(0xFFEEF2FF);
-      case ReminderCategory.tarefas:
-        return const Color(0xFFFFF7ED);
-      case ReminderCategory.compromissos:
-        return const Color(0xFFECFDF5);
-    }
+  factory ReminderModel.fromMap(Map<String, dynamic> map) {
+    return ReminderModel(
+      id: map['id'],
+      title: map['title'],
+      description: map['description'],
+      category: ReminderCategory.values.byName(map['category']),
+      dateTime: DateTime.parse(map['dateTime']),
+      status: ReminderStatus.values.byName(map['status']),
+      recurrence: RecurrenceType.values.byName(map['recurrence']),
+      createdAt: DateTime.parse(map['createdAt']),
+      notificationEnabled: map['notificationEnabled'] ?? true,
+    );
   }
 }
